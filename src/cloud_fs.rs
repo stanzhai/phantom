@@ -96,18 +96,19 @@ impl Filesystem for CloudFS {
         ino: u64,
         _fh: u64,
         offset: i64,
-        _size: u32,
+        size: u32,
         _flags: i32,
         _lock: Option<u64>,
         reply: ReplyData,
     ) {
-        println!("call read, ino: {}, offset: {}, size: {}", ino, offset, _size);
+        println!("call read, ino: {}, offset: {}, size: {}", ino, offset, size);
 
         self.update_cache(self.current_dir);
         for entry in self.cache.get(&self.current_dir).unwrap() {
             if entry.ino == ino {
-                //reply.data(&HELLO_TXT_CONTENT.as_bytes()[offset as usize..]);
-                reply.error(ENOENT);
+                let data = self.client.download(entry.pickcode.as_str(), offset, size);
+                reply.data(data.as_slice());
+                //reply.error(ENOENT);
                 return;
             }
         }

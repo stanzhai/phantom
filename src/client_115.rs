@@ -57,6 +57,7 @@ impl Client115 {
                         blksize,
                     };
 
+                    let mut pickcode = "";
                     let ino: u64;
                     if let Some(fid) = d.get("fid") {
                         ino = fid.as_str().unwrap().parse().unwrap();
@@ -67,6 +68,7 @@ impl Client115 {
                         attr.kind = FileType::RegularFile;
                         attr.perm = 0o644;
                         attr.nlink = 1;
+                        pickcode = d["pc"].as_str().unwrap();
                     } else {
                         ino = d["cid"].as_str().unwrap().parse().unwrap();
                         attr.ino = ino;
@@ -77,6 +79,7 @@ impl Client115 {
                         attr,
                         name: d["n"].as_str().unwrap().to_string(),
                         kind: attr.kind,
+                        pickcode: pickcode.to_string(),
                     });
                     println!("{} -> {}", ino, d["n"].as_str().unwrap())
                 }
@@ -84,6 +87,18 @@ impl Client115 {
             _ => {}
         }
         files
+    }
+
+    pub fn download(&self, pickcode: &str, offset: i64, size: u32) -> Vec<u8> {
+        let url = format!("http://115.com/file/{}?share_id=", pickcode);
+        let res = self.client.get(url)
+            .header("Range", format!("bytes={}-{}", offset, size))
+            .header("Referer", format!("https://115.com/?ct=download&ac=index&pickcode={}", pickcode))
+            .send()
+            .unwrap()
+            .bytes()
+            .unwrap();
+        res.to_vec()
     }
 }
 

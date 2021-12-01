@@ -5,4 +5,5 @@ pub struct FileInfo {
     pub kind: FileType,
     pub attr: FileAttr,
     pub name: String,
+    pub pickcode: String,
 }

@@ -32,6 +32,7 @@ fn main() {
     let mountpoint = matches.value_of("MOUNT_POINT").unwrap();
     let mut options = vec![MountOption::RO, MountOption::FSName("phantom".to_string())];
     options.push(MountOption::AutoUnmount);
+    options.push(MountOption::AllowOther);
     if matches.is_present("allow-root") {
         options.push(MountOption::AllowRoot);
     }
