@@ -1,40 +1,41 @@
-mod cloud_fs;
+//mod cloud_fs;
 mod client_115;
 mod file_info;
+mod http_fs;
+mod tree;
 
+use crate::client_115::Client115;
 use clap::{crate_version, App, Arg};
-use fuser::MountOption;
-use crate::cloud_fs::CloudFS;
 
-fn main() {
-    let matches = App::new("phantomFS")
-        .version(crate_version!())
-        .author("StanZhai")
-        .arg(
-            Arg::with_name("MOUNT_POINT")
-                .required(true)
-                .index(1)
-                .help("Act as a client, and mount FUSE at given path"),
-        )
-        .arg(
-            Arg::with_name("auto_unmount")
-                .long("auto_unmount")
-                .help("Automatically unmount on process exit"),
-        )
-        .arg(
-            Arg::with_name("allow-root")
-                .long("allow-root")
-                .help("Allow root user to access filesystem"),
-        )
-        .get_matches();
+use crate::http_fs::HttpFS;
+use std::convert::Infallible;
+use std::net::SocketAddr;
+use webdav_handler::{fakels::FakeLs, localfs::LocalFs, DavHandler};
 
+#[tokio::main]
+async fn main() {
     env_logger::init();
-    let mountpoint = matches.value_of("MOUNT_POINT").unwrap();
-    let mut options = vec![MountOption::RO, MountOption::FSName("phantom".to_string())];
-    options.push(MountOption::AutoUnmount);
-    options.push(MountOption::AllowOther);
-    if matches.is_present("allow-root") {
-        options.push(MountOption::AllowRoot);
-    }
-    fuser::mount2(CloudFS::default(), mountpoint, &options).unwrap();
+
+    let dav_server = DavHandler::builder()
+        .filesystem(HttpFS::new())
+        .locksystem(FakeLs::new())
+        .build_handler();
+
+    let make_service = hyper::service::make_service_fn(move |_| {
+        let dav_server = dav_server.clone();
+        async move {
+            let func = move |req| {
+                let dav_server = dav_server.clone();
+                async move { Ok::<_, Infallible>(dav_server.handle(req).await) }
+            };
+            Ok::<_, Infallible>(hyper::service::service_fn(func))
+        }
+    });
+
+    let addr = ([127, 0, 0, 1], 4918).into();
+    tracing::info!("Serving on {}", addr);
+    let _ = hyper::Server::bind(&addr)
+        .serve(make_service)
+        .await
+        .map_err(|e| eprintln!("server error: {}", e));
 }

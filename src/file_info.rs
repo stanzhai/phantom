@@ -1,9 +1,11 @@
-use fuser::{FileAttr, FileType};
+use std::time::SystemTime;
 
 pub struct FileInfo {
-    pub ino: u64,
-    pub kind: FileType,
-    pub attr: FileAttr,
-    pub name: String,
+    pub id: u64,
     pub pickcode: String,
+    pub name: String,
+    pub size: usize,
+    pub ctime: SystemTime,
+    pub is_file: bool,
+    pub data: Option<Vec<u8>>,
 }
