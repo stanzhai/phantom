@@ -1,10 +1,9 @@
-use std::borrow::BorrowMut;
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind, SeekFrom};
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::Mutex;
-use tracing::trace;
+
 use webdav_handler::davpath::DavPath;
 use webdav_handler::fs::{
     DavDirEntry, DavFile, DavFileSystem, DavMetaData, DavProp, FsError, FsFuture, FsResult,
@@ -15,9 +14,8 @@ use crate::{tree, Client115};
 use bytes::{Buf, Bytes};
 use futures::{
     future,
-    future::{BoxFuture, FutureExt},
+    future::{FutureExt},
 };
-use http::StatusCode;
 
 type Tree = tree::Tree<Vec<u8>, HttpFSNode>;
 
@@ -145,13 +143,13 @@ impl DavFileSystem for HttpFS {
         _meta: ReadDirMeta,
     ) -> FsFuture<FsStream<Box<dyn DavDirEntry>>> {
         async move {
-            let mut tree = &mut self.tree.lock().await;
+            let tree = &mut self.tree.lock().await;
             let node_id = tree.lookup(path.as_bytes())?;
             if !tree.get_node(node_id)?.is_dir() {
                 return Err(FsError::Forbidden);
             }
 
-            let mut visited = &mut self.visited.lock().await;
+            let visited = &mut self.visited.lock().await;
             if !visited.iter().any(|id| node_id == *id) {
                 let entries = self.client.opendir(node_id).await;
                 for entry in entries {
@@ -236,11 +234,11 @@ impl DavFile for HttpFSFile {
         .boxed()
     }
 
-    fn write_buf<'a>(&'a mut self, mut buf: Box<dyn Buf + Send>) -> FsFuture<()> {
+    fn write_buf<'a>(&'a mut self, _buf: Box<dyn Buf + Send>) -> FsFuture<()> {
         async move { Err(Error::new(ErrorKind::PermissionDenied, "read only fs").into()) }.boxed()
     }
 
-    fn write_bytes(&mut self, buf: Bytes) -> FsFuture<()> {
+    fn write_bytes(&mut self, _buf: Bytes) -> FsFuture<()> {
         async move { Err(Error::new(ErrorKind::PermissionDenied, "read only fs").into()) }.boxed()
     }
 

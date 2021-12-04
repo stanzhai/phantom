@@ -1,10 +1,10 @@
 use crate::file_info::FileInfo;
-use reqwest::header::{HeaderMap, HeaderValue, COOKIE, USER_AGENT};
+use reqwest::header::{HeaderMap, COOKIE, USER_AGENT};
 use reqwest::Client;
 use serde_json::Value::Array;
 use std::fs;
 use std::ops::Add;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, UNIX_EPOCH};
 
 #[derive(Debug, Clone)]
 pub struct Client115 {

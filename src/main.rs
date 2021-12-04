@@ -5,12 +5,12 @@ mod http_fs;
 mod tree;
 
 use crate::client_115::Client115;
-use clap::{crate_version, App, Arg};
+
 
 use crate::http_fs::HttpFS;
 use std::convert::Infallible;
-use std::net::SocketAddr;
-use webdav_handler::{fakels::FakeLs, localfs::LocalFs, DavHandler};
+
+use webdav_handler::{fakels::FakeLs, DavHandler};
 
 #[tokio::main]
 async fn main() {
