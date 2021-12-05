@@ -1,3 +1,5 @@
 /target
 .idea
-*.cookie
+.vscode
+115.cookie
+jellfin.json

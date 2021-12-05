@@ -39,10 +39,19 @@ impl<K: Eq + Hash + Debug + Clone, D: Debug> Tree<K, D> {
     }
 
     fn new_node(&mut self, id: u64, parent: u64, data: D) -> u64 {
+        let id = match id {
+            0 => {
+                let temp_id = self.node_id;
+                self.node_id += 1;
+                temp_id
+            },
+            _ => id,
+        };
+
         let node = Node {
-            id: id,
+            id,
             parent_id: parent,
-            data: data,
+            data,
             children: HashMap::new(),
         };
         self.nodes.insert(id, node);

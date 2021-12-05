@@ -1,4 +1,4 @@
-use crate::file_info::FileInfo;
+use crate::oof::oof_file::OofFile;
 use reqwest::header::{HeaderMap, COOKIE, USER_AGENT};
 use reqwest::Client;
 use serde_json::Value::Array;
@@ -7,23 +7,23 @@ use std::ops::Add;
 use std::time::{Duration, UNIX_EPOCH};
 
 #[derive(Debug, Clone)]
-pub struct Client115 {
+pub struct ClientOof {
     client: Client,
 }
 
-impl Client115 {
-    pub fn new() -> Client115 {
-        let cookie = fs::read_to_string("115.cookie").unwrap();
+impl ClientOof {
+    pub fn new() -> ClientOof {
+        let cookie = fs::read_to_string("115.cookie").expect("file `115.cookie` does not exits");
         let mut headers = HeaderMap::new();
         headers.insert(USER_AGENT, "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_16_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.61 Safari/537.36 115Browser/24.1.0.13".parse().unwrap());
         headers.insert(COOKIE, cookie.trim().parse().unwrap());
 
         let client = Client::builder().default_headers(headers).build().unwrap();
 
-        Client115 { client }
+        ClientOof { client }
     }
 
-    pub async fn opendir(&self, cid: u64) -> Vec<FileInfo> {
+    pub async fn opendir(&self, cid: u64) -> Vec<OofFile> {
         let cid = match cid {
             1 => 0,
             _ => cid,
@@ -60,7 +60,7 @@ impl Client115 {
                             let data = Some(file_content);
                             name = format!("{}.m3u8", name);
 
-                            FileInfo {
+                            OofFile {
                                 id: ino,
                                 name,
                                 size,
@@ -74,7 +74,7 @@ impl Client115 {
                         }
                     } else {
                         let ino = d["cid"].as_str().unwrap().parse().unwrap();
-                        FileInfo {
+                        OofFile {
                             id: ino,
                             name,
                             size: 0,
@@ -125,8 +125,8 @@ impl Client115 {
     }
 }
 
-impl Default for Client115 {
+impl Default for ClientOof {
     fn default() -> Self {
-        Client115::new()
+        ClientOof::new()
     }
 }

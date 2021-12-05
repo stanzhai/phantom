@@ -10,37 +10,37 @@ use webdav_handler::fs::{
     FsStream, OpenOptions, ReadDirMeta,
 };
 
-use crate::{tree, Client115};
+use crate::{tree, ClientOof};
 use bytes::{Buf, Bytes};
 use futures::{
     future,
     future::{FutureExt},
 };
 
-type Tree = tree::Tree<Vec<u8>, HttpFSNode>;
+type Tree = tree::Tree<Vec<u8>, OofFSNode>;
 
 #[derive(Debug)]
-pub struct HttpFS {
-    client: Arc<Client115>,
+pub struct OofFS {
+    client: Arc<ClientOof>,
     tree: Arc<Mutex<Tree>>,
     visited: Arc<Mutex<Vec<u64>>>,
 }
 
 #[derive(Debug, Clone)]
-enum HttpFSNode {
-    Dir(HttpFSDirNode),
-    File(HttpFSFileNode),
+enum OofFSNode {
+    Dir(OofFSDirNode),
+    File(OofFSFileNode),
 }
 
 #[derive(Debug, Clone)]
-struct HttpFSDirNode {
+struct OofFSDirNode {
     props: HashMap<String, DavProp>,
     mtime: SystemTime,
     crtime: SystemTime,
 }
 
 #[derive(Debug, Clone)]
-struct HttpFSFileNode {
+struct OofFSFileNode {
     props: HashMap<String, DavProp>,
     mtime: SystemTime,
     crtime: SystemTime,
@@ -50,7 +50,7 @@ struct HttpFSFileNode {
 }
 
 #[derive(Debug, Clone)]
-struct HttpFSEntry {
+struct OofFSEntry {
     mtime: SystemTime,
     crtime: SystemTime,
     is_dir: bool,
@@ -59,21 +59,21 @@ struct HttpFSEntry {
 }
 
 #[derive(Debug)]
-struct HttpFSFile {
+struct OofFSFile {
     tree: Arc<Mutex<Tree>>,
     node_id: u64,
     pickcode: String,
-    client: Arc<Client115>,
+    client: Arc<ClientOof>,
     pos: usize,
     append: bool,
 }
 
-impl HttpFS {
-    /// Create a new "HttpFS" filesystem.
-    pub fn new() -> Box<HttpFS> {
-        let root = HttpFSNode::new_dir();
-        Box::new(HttpFS {
-            client: Arc::new(Client115::new()),
+impl OofFS {
+    /// Create a new "OofFS" filesystem.
+    pub fn new() -> Box<OofFS> {
+        let root = OofFSNode::new_dir();
+        Box::new(OofFS {
+            client: Arc::new(ClientOof::new()),
             tree: Arc::new(Mutex::new(Tree::new(root))),
             visited: Arc::new(Mutex::new(Vec::new())),
         })
@@ -103,11 +103,11 @@ impl HttpFS {
         }
 
         let pickcode = match node {
-            HttpFSNode::File(f) => f.pickcode.to_owned(),
+            OofFSNode::File(f) => f.pickcode.to_owned(),
             _ => "".to_string(),
         };
 
-        Ok(Box::new(HttpFSFile {
+        Ok(Box::new(OofFSFile {
             tree: self.tree.clone(),
             client: self.client.clone(),
             pickcode,
@@ -118,9 +118,9 @@ impl HttpFS {
     }
 }
 
-impl Clone for HttpFS {
+impl Clone for OofFS {
     fn clone(&self) -> Self {
-        HttpFS {
+        OofFS {
             client: self.client.clone(),
             tree: Arc::clone(&self.tree),
             visited: Arc::clone(&self.visited),
@@ -128,7 +128,7 @@ impl Clone for HttpFS {
     }
 }
 
-impl DavFileSystem for HttpFS {
+impl DavFileSystem for OofFS {
     fn open<'a>(&'a self, path: &'a DavPath, options: OpenOptions) -> FsFuture<Box<dyn DavFile>> {
         async move {
             let tree = &mut *self.tree.lock().await;
@@ -154,7 +154,7 @@ impl DavFileSystem for HttpFS {
                 let entries = self.client.opendir(node_id).await;
                 for entry in entries {
                     let node = if entry.is_file {
-                        HttpFSNode::File(HttpFSFileNode {
+                        OofFSNode::File(OofFSFileNode {
                             crtime: entry.ctime,
                             mtime: entry.ctime,
                             pickcode: entry.pickcode,
@@ -163,7 +163,7 @@ impl DavFileSystem for HttpFS {
                             data: entry.data.unwrap(),
                         })
                     } else {
-                        HttpFSNode::Dir(HttpFSDirNode {
+                        OofFSNode::Dir(OofFSDirNode {
                             crtime: entry.ctime,
                             mtime: entry.ctime,
                             props: HashMap::new(),
@@ -212,7 +212,7 @@ fn cloneprop(p: &DavProp) -> DavProp {
     }
 }
 
-impl DavDirEntry for HttpFSEntry {
+impl DavDirEntry for OofFSEntry {
     fn name(&self) -> Vec<u8> {
         self.name.clone()
     }
@@ -223,7 +223,7 @@ impl DavDirEntry for HttpFSEntry {
     }
 }
 
-impl DavFile for HttpFSFile {
+impl DavFile for OofFSFile {
     fn metadata<'a>(&'a mut self) -> FsFuture<Box<dyn DavMetaData>> {
         async move {
             let tree = &*self.tree.lock().await;
@@ -297,7 +297,7 @@ impl DavFile for HttpFSFile {
     }
 }
 
-impl DavMetaData for HttpFSEntry {
+impl DavMetaData for OofFSEntry {
     fn len(&self) -> u64 {
         self.size
     }
@@ -315,23 +315,23 @@ impl DavMetaData for HttpFSEntry {
     }
 }
 
-impl HttpFSNode {
-    fn new_dir() -> HttpFSNode {
-        HttpFSNode::Dir(HttpFSDirNode {
+impl OofFSNode {
+    fn new_dir() -> OofFSNode {
+        OofFSNode::Dir(OofFSDirNode {
             crtime: SystemTime::now(),
             mtime: SystemTime::now(),
             props: HashMap::new(),
         })
     }
 
-    // helper to create HttpFSDirEntry from a node.
-    fn as_dirent(&self, name: &[u8]) -> HttpFSEntry {
+    // helper to create OofFSDirEntry from a node.
+    fn as_dirent(&self, name: &[u8]) -> OofFSEntry {
         let (is_dir, size, mtime, crtime) = match self {
-            //&HttpFSNode::File(ref file) => (false, file.data.len() as u64, file.mtime, file.crtime),
-            &HttpFSNode::File(ref file) => (false, file.size, file.mtime, file.crtime),
-            &HttpFSNode::Dir(ref dir) => (true, 0, dir.mtime, dir.crtime),
+            //&OofFSNode::File(ref file) => (false, file.data.len() as u64, file.mtime, file.crtime),
+            &OofFSNode::File(ref file) => (false, file.size, file.mtime, file.crtime),
+            &OofFSNode::Dir(ref dir) => (true, 0, dir.mtime, dir.crtime),
         };
-        HttpFSEntry {
+        OofFSEntry {
             name: name.to_vec(),
             mtime: mtime,
             crtime: crtime,
@@ -342,43 +342,43 @@ impl HttpFSNode {
 
     fn update_mtime(&mut self, tm: std::time::SystemTime) {
         match self {
-            &mut HttpFSNode::Dir(ref mut d) => d.mtime = tm,
-            &mut HttpFSNode::File(ref mut f) => f.mtime = tm,
+            &mut OofFSNode::Dir(ref mut d) => d.mtime = tm,
+            &mut OofFSNode::File(ref mut f) => f.mtime = tm,
         }
     }
 
     fn is_dir(&self) -> bool {
         match self {
-            &HttpFSNode::Dir(_) => true,
-            &HttpFSNode::File(_) => false,
+            &OofFSNode::Dir(_) => true,
+            &OofFSNode::File(_) => false,
         }
     }
 
-    fn as_file(&self) -> FsResult<&HttpFSFileNode> {
+    fn as_file(&self) -> FsResult<&OofFSFileNode> {
         match self {
-            &HttpFSNode::File(ref n) => Ok(n),
+            &OofFSNode::File(ref n) => Ok(n),
             _ => Err(FsError::Forbidden),
         }
     }
 
-    fn as_file_mut(&mut self) -> FsResult<&mut HttpFSFileNode> {
+    fn as_file_mut(&mut self) -> FsResult<&mut OofFSFileNode> {
         match self {
-            &mut HttpFSNode::File(ref mut n) => Ok(n),
+            &mut OofFSNode::File(ref mut n) => Ok(n),
             _ => Err(FsError::Forbidden),
         }
     }
 
     fn get_props(&self) -> &HashMap<String, DavProp> {
         match self {
-            &HttpFSNode::File(ref n) => &n.props,
-            &HttpFSNode::Dir(ref d) => &d.props,
+            &OofFSNode::File(ref n) => &n.props,
+            &OofFSNode::Dir(ref d) => &d.props,
         }
     }
 
     fn get_props_mut(&mut self) -> &mut HashMap<String, DavProp> {
         match self {
-            &mut HttpFSNode::File(ref mut n) => &mut n.props,
-            &mut HttpFSNode::Dir(ref mut d) => &mut d.props,
+            &mut OofFSNode::File(ref mut n) => &mut n.props,
+            &mut OofFSNode::Dir(ref mut d) => &mut d.props,
         }
     }
 }

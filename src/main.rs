@@ -1,23 +1,22 @@
-//mod cloud_fs;
-mod client_115;
-mod file_info;
-mod http_fs;
 mod tree;
+mod jellyfin;
+mod oof;
 
-use crate::client_115::Client115;
+use oof::client::ClientOof;
 
-
-use crate::http_fs::HttpFS;
+use oof::oof_fs::OofFS;
 use std::convert::Infallible;
 
-use webdav_handler::{fakels::FakeLs, DavHandler};
+use webdav_handler::{DavHandler, fakels::FakeLs};
+use crate::jellyfin::fs::JellyfinFS;
 
 #[tokio::main]
 async fn main() {
     env_logger::init();
 
     let dav_server = DavHandler::builder()
-        .filesystem(HttpFS::new())
+        //.filesystem(OofFS::new())
+        .filesystem(JellyfinFS::new())
         .locksystem(FakeLs::new())
         .build_handler();
 

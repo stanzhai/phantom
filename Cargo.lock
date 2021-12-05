@@ -929,6 +929,7 @@ dependencies = [
  "hyper",
  "lru 0.7.0",
  "reqwest",
+ "serde",
  "serde_json",
  "tokio",
  "tracing",
