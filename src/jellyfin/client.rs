@@ -42,18 +42,26 @@ impl JellyfinClient {
             Array(data) => {
                 for d in data {
                     let id = d["Id"].as_str().unwrap().to_string();
-                    let name = d["Path"].as_str().unwrap().split("/").last().unwrap().to_string();
+                    let mut name = d["Path"].as_str().unwrap().split("/").last().unwrap().to_string();
                     let time = SystemTime::now();
                     let is_file = !d["IsFolder"].as_bool().unwrap();
 
                     let size = if is_file {
+                        /*
                         let url = format!("{}/Users/{}/Items/{}?api_key={}", config.server, config.user_id, id, config.api_key);
                         let item_res: serde_json::Value = self.client.get(url).send().await.unwrap().json().await.unwrap();
                         let file_info = &item_res["MediaSources"].as_array().unwrap()[0];
                         file_info["Size"].as_u64().unwrap() as usize
+                         */
+                        let url = format!("{}/Items/{}/Download?api_key={}", config.server, id, config.api_key);
+                        url.len()
                     } else {
                         0
                     };
+
+                    if is_file {
+                        name = format!("{}.m3u8", name);
+                    }
 
                     let file = File {
                         id,
@@ -78,8 +86,10 @@ impl JellyfinClient {
     }
 
     pub async fn download(&self, id: &str, start: usize, end: usize) -> Bytes {
+        tracing::info!("call download: {}, {}-{}", id, start, end);
         let config = &self.config;
         let url = format!("{}/Items/{}/Download?api_key={}", config.server, id, config.api_key);
+        /*
         let res = self
             .client
             .get(url)
@@ -91,5 +101,7 @@ impl JellyfinClient {
             .await
             .unwrap();
         res
+         */
+        Bytes::from(url)
     }
 }
