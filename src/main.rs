@@ -20,11 +20,13 @@ async fn main() {
         .author("StanZhai")
         .arg(
             Arg::with_name("port")
+                .short("p")
                 .default_value("4918")
                 .help("webdav server port"),
         )
         .arg(
             Arg::with_name("type")
+                .short("t")
                 .default_value("oof")
                 .help("FS type, oof or jellyfin"),
         )
