@@ -1,15 +1,15 @@
 use crate::jellyfin::config::Config;
 use crate::jellyfin::file::File;
-use crate::oof::oof_file::OofFile;
+
 use bytes::Bytes;
-use http::header::CONTENT_LENGTH;
-use reqwest::header::{HeaderMap, COOKIE, USER_AGENT};
+
+use reqwest::header::{HeaderMap};
 use reqwest::Client;
 use serde_json::Value::Array;
-use std::fmt::format;
-use std::fs;
-use std::ops::Add;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+
+
+use std::time::{SystemTime};
 
 #[derive(Debug, Clone)]
 pub struct JellyfinClient {
@@ -19,7 +19,7 @@ pub struct JellyfinClient {
 
 impl JellyfinClient {
     pub fn new(config: Config) -> JellyfinClient {
-        let mut headers = HeaderMap::new();
+        let headers = HeaderMap::new();
         let client = Client::builder().default_headers(headers).build().unwrap();
 
         JellyfinClient { client, config }

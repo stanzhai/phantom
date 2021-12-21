@@ -13,7 +13,7 @@ use webdav_handler::fs::{
 
 use crate::jellyfin::client::JellyfinClient;
 use crate::jellyfin::config::Config;
-use crate::{jellyfin, tree};
+use crate::{tree};
 use bytes::{Buf, Bytes};
 use futures::{future, future::FutureExt};
 
@@ -257,7 +257,7 @@ impl DavFile for FSFile {
         async move { Err(Error::new(ErrorKind::PermissionDenied, "read only fs").into()) }.boxed()
     }
 
-    fn read_bytes(&mut self, count: usize) -> FsFuture<Bytes> {
+    fn read_bytes(&mut self, _count: usize) -> FsFuture<Bytes> {
         async move {
             let tree = &*self.tree.lock().await;
             let node = tree.get_node(self.node_id)?;
