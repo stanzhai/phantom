@@ -6,4 +6,5 @@ pub struct File {
     pub size: usize,
     pub ctime: SystemTime,
     pub is_file: bool,
+    pub data: Option<String>,
 }

@@ -12,10 +12,7 @@ use webdav_handler::fs::{
 
 use crate::{tree, ClientOof};
 use bytes::{Buf, Bytes};
-use futures::{
-    future,
-    future::{FutureExt},
-};
+use futures::{future, future::FutureExt};
 
 type Tree = tree::Tree<Vec<u8>, OofFSNode>;
 

@@ -44,7 +44,7 @@ impl<K: Eq + Hash + Debug + Clone, D: Debug> Tree<K, D> {
                 let temp_id = self.node_id;
                 self.node_id += 1;
                 temp_id
-            },
+            }
             _ => id,
         };
 

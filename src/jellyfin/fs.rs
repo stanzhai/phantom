@@ -11,14 +11,11 @@ use webdav_handler::fs::{
     FsStream, OpenOptions, ReadDirMeta,
 };
 
-use crate::{tree, jellyfin};
-use bytes::{Buf, Bytes};
-use futures::{
-    future,
-    future::{FutureExt},
-};
 use crate::jellyfin::client::JellyfinClient;
 use crate::jellyfin::config::Config;
+use crate::{jellyfin, tree};
+use bytes::{Buf, Bytes};
+use futures::{future, future::FutureExt};
 
 type Tree = tree::Tree<Vec<u8>, FSNode>;
 
@@ -50,6 +47,7 @@ struct FSFileNode {
     crtime: SystemTime,
     id: String,
     size: usize,
+    data: String,
 }
 
 #[derive(Debug, Clone)]
@@ -75,9 +73,15 @@ impl JellyfinFS {
     /// Create a new "FS" filesystem.
     pub fn new() -> Box<JellyfinFS> {
         let demo_config = serde_json::ser::to_string(&Config::default()).unwrap();
-        let msg = format!("jellyfin.json does not exists, you should create with the content like:\r\n{}", demo_config);
+        let msg = format!(
+            "jellyfin.json does not exists, you should create with the content like:\r\n{}",
+            demo_config
+        );
         let config_str = fs::read_to_string("jellyfin.json").expect(msg.as_str());
-        let config = serde_json::de::from_str::<Config>(config_str.as_str()).unwrap();
+        let mut config = serde_json::de::from_str::<Config>(config_str.as_str()).unwrap();
+        if config.bitrate == 0 {
+            config.bitrate = 4000000;
+        }
         let root_id = config.root_folder_id.to_string();
 
         let client = JellyfinClient::new(config);
@@ -141,7 +145,7 @@ impl DavFileSystem for JellyfinFS {
             let tree = &mut *self.tree.lock().await;
             self.do_open(tree, path.as_bytes(), options)
         }
-            .boxed()
+        .boxed()
     }
 
     fn read_dir<'a>(
@@ -170,6 +174,7 @@ impl DavFileSystem for JellyfinFS {
                             id: entry.id,
                             props: HashMap::new(),
                             size: entry.size,
+                            data: entry.data.unwrap(),
                         })
                     } else {
                         FSNode::Dir(FSDirNode {
@@ -203,7 +208,7 @@ impl DavFileSystem for JellyfinFS {
             let meta = tree.get_node(node_id)?.as_dirent(path.as_bytes());
             Ok(Box::new(meta) as Box<dyn DavMetaData>)
         }
-            .boxed()
+        .boxed()
     }
 }
 
@@ -241,7 +246,7 @@ impl DavFile for FSFile {
             let meta = node.as_dirent(b"");
             Ok(Box::new(meta) as Box<dyn DavMetaData>)
         }
-            .boxed()
+        .boxed()
     }
 
     fn write_buf<'a>(&'a mut self, _buf: Box<dyn Buf + Send>) -> FsFuture<()> {
@@ -257,6 +262,7 @@ impl DavFile for FSFile {
             let tree = &*self.tree.lock().await;
             let node = tree.get_node(self.node_id)?;
             let file = node.as_file()?;
+            /*
             let curlen = file.size;
 
             let mut start = self.pos;
@@ -269,8 +275,8 @@ impl DavFile for FSFile {
             }
             let cnt = end - start;
             self.pos += cnt;
-            let data = self.client.download(file.id.as_str(), start, end).await;
-            Ok(data)
+             */
+            Ok(Bytes::from(file.data.to_string()))
         }
         .boxed()
     }
@@ -300,7 +306,7 @@ impl DavFile for FSFile {
             }
             Ok(self.pos as u64)
         }
-            .boxed()
+        .boxed()
     }
 
     fn flush(&mut self) -> FsFuture<()> {
